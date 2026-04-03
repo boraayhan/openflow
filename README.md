@@ -6,6 +6,6 @@ The code isn't pretty. It's not ingenious. It's not interesting. But it works (I
 ### Hardware:
 * Generic MAX6675 Thermocouple
 * Old toaster oven
-* Arduino UNO
+* Arduino UNO (or whatever ATMega chip)
 
 ## Released under a "Bora-Only' License: Don't use it. It's janky.
