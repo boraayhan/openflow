@@ -21,21 +21,26 @@ struct ReflowStep
 };
 
 ReflowStep steps[] = {
-    // Temp (deg C), time (sec). Uses https://www.johansontechnology.com/docs/3177/johanson-reflow-profile_0ixNOve.pdf
-    {200, 0, RISE},   // Preheat / Soak
-    {200, 120, HOLD}, // Ramp to Peak
-    {240, 0, RISE},   // Reach reflow temp, subtracted 20 for thermocouple control delay
-    {240, 20, HOLD},  // Reflow, subtracted 20 for thermocouple control delay
-    {0, 0, STOP}      // Cooldown, end of program
+    // Temp (deg C), time (sec). Uses a custom profile
+    {120, 0, RISE},  // Preheat / Soak
+    {120, 60, RISE}, // Warm up board
+    {140, 0, RISE},  // Reach reflow temp, subtracted 20 for thermocouple control delay
+    {140, 20, HOLD}, // Reflow, subtracted 20 for thermocouple control delay
+    {0, 0, STOP}     // Cooldown, end of program
 };
 
-MAX6675 thermocouple(1, 2, 3);
-Relay power(4, true);
+int thermoDO = 4;
+int thermoCS = 5;
+int thermoCLK = 6;
+
+MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);
+
+Relay power(7, false);
 
 void setup()
 {
   Serial.begin(115200);
-  thermocouple.begin();
+  power.begin();
   Serial.println("Press any key to start the reflow oven...");
   while (!Serial.available())
   {
@@ -52,12 +57,12 @@ void setup()
     }
     if (step.mode == RISE)
     {
-      float currentTemp = thermocouple.getCelsius();
+      float currentTemp = thermocouple.readCelsius();
       while (currentTemp < step.tempCelsius)
       {
         Serial.println("Current Temp (C): " + String(currentTemp) + ", Target: " + String(step.tempCelsius) + " deg C");
         delay(500);
-        currentTemp = thermocouple.getCelsius();
+        currentTemp = thermocouple.readCelsius();
         if (currentTemp > step.tempCelsius + 2)
         {
           power.turnOff();
@@ -73,7 +78,7 @@ void setup()
       unsigned long startTime = millis();
       while (millis() - startTime < step.timeSeconds * 1000UL)
       {
-        float currentTemp = thermocouple.getCelsius();
+        float currentTemp = thermocouple.readCelsius();
         Serial.println("Current Temp (C): " + String(currentTemp) + ", Target: " + String(step.tempCelsius) + ", Time Remaining: " + String((step.timeSeconds * 1000UL - (millis() - startTime)) / 1000UL) + " sec.");
 
         if (currentTemp > step.tempCelsius + 2)
@@ -87,6 +92,11 @@ void setup()
         delay(500);
       }
     }
+  }
+  Serial.println("Reflow complete. Cooldown initiated.");
+  while(true) {
+    Serial.println("Current Temp (C): " + String(thermocouple.readCelsius()) + ", Cooling down...");
+    delay(3000);
   }
 }
 
